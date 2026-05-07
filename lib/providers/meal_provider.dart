@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/meal.dart';
-import '../models/food_item.dart';
 
 class MealProvider extends ChangeNotifier {
   late Box<Meal> _mealBox;
@@ -11,6 +10,10 @@ class MealProvider extends ChangeNotifier {
 
   Future<void> init() async {
     _mealBox = await Hive.openBox<Meal>('meals');
+    _loadMeals();
+  }
+
+  Future<void> reload() async {
     _loadMeals();
   }
 

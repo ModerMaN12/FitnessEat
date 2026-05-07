@@ -18,6 +18,10 @@ class FoodProvider extends ChangeNotifier {
     _loadFoods();
   }
 
+  Future<void> reload() async {
+    _loadFoods();
+  }
+
   void _loadFoods() {
     _foods = _foodBox.values.toList();
     notifyListeners();

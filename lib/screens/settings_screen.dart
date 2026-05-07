@@ -3,7 +3,10 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/meal_provider.dart';
 import '../providers/food_provider.dart';
+import '../providers/goals_provider.dart';
+import '../providers/template_provider.dart';
 import '../utils/data_export.dart';
+import 'package:share_plus/share_plus.dart';
 
 class SettingsScreen extends StatelessWidget {
   final Function(ThemeMode) setTheme;
@@ -102,12 +105,19 @@ class SettingsScreen extends StatelessWidget {
 
   void _handleExportJson(BuildContext context) async {
     try {
-      final result = await DataExport.exportToJson();
+      final jsonString = await DataExport.exportToJson();
       if (kIsWeb) {
-        _showJsonDialog(context, result);
+        DataExport.showDataDialog(context, jsonString, 'Экспорт JSON (скопируйте)');
       } else {
+        final path = await DataExport.saveJsonFile(jsonString);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Сохранено: $result')),
+          SnackBar(
+            content: Text('Сохранено: $path'),
+            action: SnackBarAction(
+              label: 'Поделиться',
+              onPressed: () => DataExport.shareFile(path),
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -119,12 +129,19 @@ class SettingsScreen extends StatelessWidget {
 
   void _handleExportCsv(BuildContext context) async {
     try {
-      final result = await DataExport.exportToCsv();
+      final csvString = await DataExport.exportToCsv();
       if (kIsWeb) {
-        _showJsonDialog(context, result);
+        DataExport.showDataDialog(context, csvString, 'Экспорт CSV (скопируйте)');
       } else {
+        final path = await DataExport.saveCsvFile(csvString);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Сохранено: $result')),
+          SnackBar(
+            content: Text('Сохранено: $path'),
+            action: SnackBarAction(
+              label: 'Поделиться',
+              onPressed: () => DataExport.shareFile(path),
+            ),
+          ),
         );
       }
     } catch (e) {
@@ -136,30 +153,40 @@ class SettingsScreen extends StatelessWidget {
 
   void _handleImportJson(BuildContext context) async {
     try {
-      await DataExport.importFromJson(context);
+      print('=== Starting import process ===');
+      final data = await DataExport.importFromJson();
+      if (data != null) {
+        print('Data parsed successfully, applying...');
+        await DataExport.applyImportedData(data);
+
+        // Перезагружаем провайдеры чтобы обновить UI
+        print('Reloading providers...');
+        final foodProvider = Provider.of<FoodProvider>(context, listen: false);
+        final mealProvider = Provider.of<MealProvider>(context, listen: false);
+        final goalsProvider = Provider.of<GoalsProvider>(context, listen: false);
+        final templateProvider = Provider.of<TemplateProvider>(context, listen: false);
+
+        foodProvider.reload();
+        mealProvider.reload();
+        goalsProvider.reload();
+        templateProvider.reload();
+
+        print('=== Import process complete ===');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Данные успешно импортированы и обновлены')),
+        );
+      } else {
+        print('Import cancelled or no data');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Импорт отменен или файл не содержит данных')),
+        );
+      }
     } catch (e) {
+      print('Import error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
+        SnackBar(content: Text('Ошибка импорта: $e')),
       );
     }
-  }
-
-  void _showJsonDialog(BuildContext context, String content) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Данные (скопируйте)'),
-        content: SingleChildScrollView(
-          child: SelectableText(content),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildNotificationsSection(BuildContext context) {

@@ -24,6 +24,11 @@ class GoalsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> reload() async {
+    _goals = _goalsBox.get('main');
+    notifyListeners();
+  }
+
   Future<void> updateGoals(Goals newGoals) async {
     await _goalsBox.put('main', newGoals);
     _goals = newGoals;

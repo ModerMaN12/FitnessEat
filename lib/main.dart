@@ -6,9 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'models/food_item.dart';
 import 'models/meal.dart';
 import 'models/goals.dart';
+import 'models/meal_template.dart';
 import 'providers/food_provider.dart';
 import 'providers/meal_provider.dart';
 import 'providers/goals_provider.dart';
+import 'providers/template_provider.dart';
 import 'screens/home_screen.dart';
 import 'utils/theme.dart';
 
@@ -22,14 +24,18 @@ void main() async {
   Hive.registerAdapter(MealItemAdapter());
   Hive.registerAdapter(MealAdapter());
   Hive.registerAdapter(GoalsAdapter());
+  Hive.registerAdapter(MealTemplateAdapter());
+  Hive.registerAdapter(TemplateItemAdapter());
 
   final foodProvider = FoodProvider();
   final mealProvider = MealProvider();
   final goalsProvider = GoalsProvider();
+  final templateProvider = TemplateProvider();
 
   await foodProvider.init();
   await mealProvider.init();
   await goalsProvider.init();
+  await templateProvider.init();
 
   runApp(
     MultiProvider(
@@ -37,6 +43,7 @@ void main() async {
         ChangeNotifierProvider.value(value: foodProvider),
         ChangeNotifierProvider.value(value: mealProvider),
         ChangeNotifierProvider.value(value: goalsProvider),
+        ChangeNotifierProvider.value(value: templateProvider),
       ],
       child: const MyApp(),
     ),

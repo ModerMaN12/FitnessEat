@@ -11,6 +11,8 @@ import 'add_meal_screen.dart';
 import 'all_meals_screen.dart';
 import 'goals_screen.dart';
 import 'settings_screen.dart';
+import 'statistics_screen.dart';
+import 'templates_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final Function(ThemeMode) setTheme;
@@ -435,13 +437,23 @@ class _HomeScreenState extends State<HomeScreen> {
               'Шаблоны',
               Icons.bookmark,
               Colors.blue,
-              () {},
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TemplatesScreen()),
+                );
+              },
             ),
             _buildActionButton(
               'Статистика',
               Icons.bar_chart,
               Colors.orange,
-              () {},
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const StatisticsScreen()),
+                );
+              },
             ),
           ],
         ),

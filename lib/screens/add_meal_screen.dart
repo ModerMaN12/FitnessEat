@@ -6,9 +6,12 @@ import '../providers/food_provider.dart';
 import '../providers/meal_provider.dart';
 import '../models/food_item.dart';
 import '../models/meal.dart';
+import '../models/meal_template.dart';
 
 class AddMealScreen extends StatefulWidget {
-  const AddMealScreen({super.key});
+  final MealTemplate? template;
+
+  const AddMealScreen({super.key, this.template});
 
   @override
   State<AddMealScreen> createState() => _AddMealScreenState();
@@ -23,6 +26,36 @@ class _AddMealScreenState extends State<AddMealScreen> {
   double _totalProteins = 0;
   double _totalFats = 0;
   double _totalCarbs = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.template != null) {
+      _mealType = _mapTemplateTypeToMealType(widget.template!.type);
+      for (var item in widget.template!.items) {
+        _selectedItems.add(MealItemData(
+          foodItemId: item.foodItemId,
+          foodName: item.foodName,
+          grams: item.grams,
+        ));
+      }
+    }
+  }
+
+  String _mapTemplateTypeToMealType(String templateType) {
+    switch (templateType) {
+      case 'breakfast':
+        return 'Завтрак';
+      case 'lunch':
+        return 'Обед';
+      case 'dinner':
+        return 'Ужин';
+      case 'snack':
+        return 'Перекус';
+      default:
+        return 'Завтрак';
+    }
+  }
 
   void _calculateTotals(FoodProvider foodProvider) {
     _totalCalories = 0;

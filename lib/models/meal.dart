@@ -1,5 +1,4 @@
 import 'package:hive/hive.dart';
-import 'food_item.dart';
 
 part 'meal.g.dart';
 
