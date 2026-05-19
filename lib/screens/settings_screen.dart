@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
-import '../providers/meal_provider.dart';
 import '../providers/food_provider.dart';
+import '../providers/meal_provider.dart';
 import '../providers/goals_provider.dart';
 import '../providers/template_provider.dart';
 import '../utils/data_export.dart';
-import 'package:share_plus/share_plus.dart';
+import 'notification_settings_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   final Function(ThemeMode) setTheme;
@@ -153,14 +153,11 @@ class SettingsScreen extends StatelessWidget {
 
   void _handleImportJson(BuildContext context) async {
     try {
-      print('=== Starting import process ===');
       final data = await DataExport.importFromJson();
       if (data != null) {
-        print('Data parsed successfully, applying...');
         await DataExport.applyImportedData(data);
 
         // Перезагружаем провайдеры чтобы обновить UI
-        print('Reloading providers...');
         final foodProvider = Provider.of<FoodProvider>(context, listen: false);
         final mealProvider = Provider.of<MealProvider>(context, listen: false);
         final goalsProvider = Provider.of<GoalsProvider>(context, listen: false);
@@ -171,18 +168,15 @@ class SettingsScreen extends StatelessWidget {
         goalsProvider.reload();
         templateProvider.reload();
 
-        print('=== Import process complete ===');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Данные успешно импортированы и обновлены')),
         );
       } else {
-        print('Import cancelled or no data');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Импорт отменен или файл не содержит данных')),
         );
       }
     } catch (e) {
-      print('Import error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Ошибка импорта: $e')),
       );
@@ -198,23 +192,16 @@ class SettingsScreen extends StatelessWidget {
           child: Text('Уведомления',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         ),
-        SwitchListTile(
-          title: const Text('Напоминание о воде'),
-          subtitle: const Text('Каждые 2 часа'),
-          value: false,
-          onChanged: (value) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Уведомления в разработке')),
-            );
-          },
-        ),
-        SwitchListTile(
-          title: const Text('Напоминания о приемах пищи'),
-          subtitle: const Text('Завтрак, обед, ужин'),
-          value: false,
-          onChanged: (value) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Уведомления в разработке')),
+        ListTile(
+          leading: const Icon(Icons.notifications),
+          title: const Text('Настройки уведомлений'),
+          subtitle: const Text('Вода и приемы пищи'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const NotificationSettingsScreen()),
             );
           },
         ),

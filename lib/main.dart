@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
@@ -7,10 +8,13 @@ import 'models/food_item.dart';
 import 'models/meal.dart';
 import 'models/goals.dart';
 import 'models/meal_template.dart';
+import 'models/water_entry.dart';
 import 'providers/food_provider.dart';
 import 'providers/meal_provider.dart';
 import 'providers/goals_provider.dart';
 import 'providers/template_provider.dart';
+import 'providers/water_provider.dart';
+import 'services/notification_service.dart';
 import 'screens/home_screen.dart';
 import 'utils/theme.dart';
 
@@ -26,16 +30,21 @@ void main() async {
   Hive.registerAdapter(GoalsAdapter());
   Hive.registerAdapter(MealTemplateAdapter());
   Hive.registerAdapter(TemplateItemAdapter());
+  Hive.registerAdapter(WaterEntryAdapter());
 
   final foodProvider = FoodProvider();
   final mealProvider = MealProvider();
   final goalsProvider = GoalsProvider();
   final templateProvider = TemplateProvider();
+  final waterProvider = WaterProvider();
+  final notificationService = NotificationService();
 
   await foodProvider.init();
   await mealProvider.init();
   await goalsProvider.init();
   await templateProvider.init();
+  await waterProvider.init();
+  await notificationService.init();
 
   runApp(
     MultiProvider(
@@ -44,6 +53,8 @@ void main() async {
         ChangeNotifierProvider.value(value: mealProvider),
         ChangeNotifierProvider.value(value: goalsProvider),
         ChangeNotifierProvider.value(value: templateProvider),
+        ChangeNotifierProvider.value(value: waterProvider),
+        Provider.value(value: notificationService),
       ],
       child: const MyApp(),
     ),
@@ -94,6 +105,13 @@ class _MyAppState extends State<MyApp> {
       darkTheme: AppTheme.darkTheme,
       themeMode: _themeMode,
       home: HomeScreen(setTheme: setTheme, themeMode: _themeMode),
+      locale: const Locale('ru', 'RU'),
+      supportedLocales: const [Locale('ru', 'RU'), Locale('en', 'US')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       debugShowCheckedModeBanner: false,
     );
   }

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import 'package:intl/intl.dart';
-import '../providers/food_provider.dart';
 import '../providers/meal_provider.dart';
 import '../providers/goals_provider.dart';
+import '../providers/water_provider.dart';
 import '../models/meal.dart';
 import 'food_table_screen.dart';
 import 'add_meal_screen.dart';
@@ -27,7 +27,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _period = 'day';
   DateTime _selectedDate = DateTime.now();
-  double _waterConsumed = 0;
 
   List<Meal> get _filteredMeals {
     final mealProvider = Provider.of<MealProvider>(context, listen: false);
@@ -118,8 +117,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Consumer3<MealProvider, GoalsProvider, FoodProvider>(
-        builder: (context, mealProvider, goalsProvider, foodProvider, child) {
+      body: Consumer3<MealProvider, GoalsProvider, WaterProvider>(
+        builder: (context, mealProvider, goalsProvider, waterProvider, child) {
           final totals = _totals;
 
           return SingleChildScrollView(
@@ -133,7 +132,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 16),
                 _buildDashboard(totals, goalsProvider),
                 const SizedBox(height: 16),
-                _buildWaterTracker(goalsProvider),
+                _buildWaterTracker(goalsProvider, waterProvider),
                 const SizedBox(height: 16),
                 _buildLastMeal(mealProvider),
                 const SizedBox(height: 16),
@@ -324,7 +323,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildWaterTracker(GoalsProvider goals) {
+  Widget _buildWaterTracker(GoalsProvider goals, WaterProvider water) {
+    final waterConsumed = water.getWaterForDate(_selectedDate);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -335,7 +336,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             LinearProgressIndicator(
-              value: _waterConsumed / goals.water,
+              value: waterConsumed / goals.water,
               minHeight: 10,
               backgroundColor: Colors.blue.withOpacity(0.2),
               valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
@@ -344,23 +345,18 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('${_waterConsumed.toInt()} / ${goals.water.toInt()} мл'),
+                Text('${waterConsumed.toInt()} / ${goals.water.toInt()} мл'),
                 Row(
                   children: [
                     IconButton(
                       icon: const Icon(Icons.remove),
                       onPressed: () {
-                        setState(() {
-                          _waterConsumed =
-                              (_waterConsumed - 250).clamp(0, double.infinity);
-                        });
+                        water.removeWater(_selectedDate, 250);
                       },
                     ),
                     TextButton(
                       onPressed: () {
-                        setState(() {
-                          _waterConsumed += 250;
-                        });
+                        water.addWater(_selectedDate, 250);
                       },
                       child: const Text('+250 мл'),
                     ),

@@ -92,56 +92,40 @@ class DataExport {
   }
 
   static Future<void> applyImportedData(Map<String, dynamic> data) async {
-    print('=== Starting import ===');
     final foodBox = Hive.box<FoodItem>('foods');
     final mealBox = Hive.box<Meal>('meals');
     final goalsBox = Hive.box<Goals>('goals');
     final templateBox = Hive.box<MealTemplate>('templates');
 
-    print('Clearing old data...');
     await foodBox.clear();
     await mealBox.clear();
     await goalsBox.clear();
     await templateBox.clear();
 
-    // Force flush to disk
-    await foodBox.flush();
-    await mealBox.flush();
-    await goalsBox.flush();
-    await templateBox.flush();
-
-    print('Importing foods...');
     if (data['foods'] != null) {
       for (var item in data['foods']) {
-        final food = _mapToFoodItem(item);
-        await foodBox.put(food.id, food);
+        final food = await _mapToFoodItem(item);
+        if (food != null) await foodBox.put(food.id, food);
       }
-      print('Imported ${data['foods'].length} foods');
     }
 
-    print('Importing meals...');
     if (data['meals'] != null) {
       for (var item in data['meals']) {
-        final meal = _mapToMeal(item);
-        await mealBox.put(meal.id, meal);
+        final meal = await _mapToMeal(item);
+        if (meal != null) await mealBox.put(meal.id, meal);
       }
-      print('Imported ${data['meals'].length} meals');
     }
 
     if (data['goals'] != null && (data['goals'] as List).isNotEmpty) {
-      print('Importing goals...');
       final goals = _mapToGoals(data['goals'][0]);
       await goalsBox.put('daily', goals);
-      print('Goals imported');
     }
 
     if (data['templates'] != null) {
-      print('Importing templates...');
       for (var item in data['templates']) {
         final template = _mapToTemplate(item);
         await templateBox.put(template.id, template);
       }
-      print('Imported ${data['templates'].length} templates');
     }
 
     // Force flush to ensure all data is written to disk
@@ -149,11 +133,6 @@ class DataExport {
     await mealBox.flush();
     await goalsBox.flush();
     await templateBox.flush();
-
-    print('=== Import complete ===');
-    print('Foods in box: ${foodBox.length}');
-    print('Meals in box: ${mealBox.length}');
-    print('Templates in box: ${templateBox.length}');
   }
 
   static Future<String> exportToCsv() async {
@@ -228,10 +207,21 @@ class DataExport {
   }
 
   static Map<String, dynamic> _foodItemToMap(FoodItem item) {
+    String? imageData;
+    if (item.imagePath != null) {
+      try {
+        final file = io.File(item.imagePath!);
+        if (file.existsSync()) {
+          imageData = base64Encode(file.readAsBytesSync());
+        }
+      } catch (_) {}
+    }
+
     return {
       'id': item.id,
       'name': item.name,
       'imagePath': item.imagePath,
+      'imageData': imageData,
       'calories': item.calories,
       'proteins': item.proteins,
       'fats': item.fats,
@@ -241,21 +231,60 @@ class DataExport {
     };
   }
 
-  static FoodItem _mapToFoodItem(Map<String, dynamic> map) {
-    return FoodItem(
-      id: map['id'],
-      name: map['name'],
-      imagePath: map['imagePath'],
-      calories: map['calories'],
-      proteins: map['proteins'],
-      fats: map['fats'],
-      carbs: map['carbs'],
-      isPer100g: map['isPer100g'] ?? true,
-      isComposite: map['isComposite'] ?? false,
-    );
+  static Future<FoodItem?> _mapToFoodItem(Map<String, dynamic> map) async {
+    try {
+      String? imagePath = map['imagePath'];
+      if (map['imageData'] != null && map['imageData'].toString().isNotEmpty) {
+        imagePath = await _saveImageFromBase64(
+          map['imageData'].toString(),
+          map['id'],
+        );
+      }
+
+      return FoodItem(
+        id: map['id'],
+        name: map['name'],
+        imagePath: imagePath,
+        calories: map['calories'],
+        proteins: map['proteins'],
+        fats: map['fats'],
+        carbs: map['carbs'],
+        isPer100g: map['isPer100g'] ?? true,
+        isComposite: map['isComposite'] ?? false,
+      );
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<String?> _saveImageFromBase64(
+      String base64String, String id) async {
+    try {
+      final bytes = base64Decode(base64String);
+      final directory = await getApplicationDocumentsDirectory();
+      final imageDir = io.Directory('${directory.path}/images');
+      if (!await imageDir.exists()) {
+        await imageDir.create(recursive: true);
+      }
+      final file = io.File('${imageDir.path}/$id.jpg');
+      await file.writeAsBytes(bytes);
+      return file.path;
+    } catch (_) {
+      return null;
+    }
   }
 
   static Map<String, dynamic> _mealToMap(Meal meal) {
+    String? imageData;
+    if (meal.imagePath != null) {
+      try {
+        final file = io.File(meal.imagePath!);
+        if (file.existsSync()) {
+          imageData = base64Encode(file.readAsBytesSync());
+        }
+      } catch (_) {}
+    }
+
     return {
       'id': meal.id,
       'date': meal.date.toIso8601String(),
@@ -268,6 +297,7 @@ class DataExport {
               })
           .toList(),
       'imagePath': meal.imagePath,
+      'imageData': imageData,
       'totalCalories': meal.totalCalories,
       'totalProteins': meal.totalProteins,
       'totalFats': meal.totalFats,
@@ -275,25 +305,36 @@ class DataExport {
     };
   }
 
-  static Meal _mapToMeal(Map<String, dynamic> map) {
-    final meal = Meal(
-      id: map['id'],
-      date: DateTime.parse(map['date']),
-      type: map['type'],
-      items: (map['items'] as List)
-          .map((item) => MealItem(
-                foodItemId: item['foodItemId'],
-                grams: item['grams'],
-                foodName: item['foodName'],
-              ))
-          .toList(),
-      imagePath: map['imagePath'],
-      totalCalories: map['totalCalories'],
-      totalProteins: map['totalProteins'],
-      totalFats: map['totalFats'],
-      totalCarbs: map['totalCarbs'],
-    );
-    return meal;
+  static Future<Meal?> _mapToMeal(Map<String, dynamic> map) async {
+    try {
+      String? imagePath = map['imagePath'];
+      if (map['imageData'] != null && map['imageData'].toString().isNotEmpty) {
+        imagePath = await _saveImageFromBase64(
+          map['imageData'].toString(),
+          map['id'],
+        );
+      }
+
+      return Meal(
+        id: map['id'],
+        date: DateTime.parse(map['date']),
+        type: map['type'],
+        items: (map['items'] as List)
+            .map((item) => MealItem(
+                  foodItemId: item['foodItemId'],
+                  grams: item['grams'],
+                  foodName: item['foodName'],
+                ))
+            .toList(),
+        imagePath: imagePath,
+        totalCalories: map['totalCalories'],
+        totalProteins: map['totalProteins'],
+        totalFats: map['totalFats'],
+        totalCarbs: map['totalCarbs'],
+      );
+    } catch (e) {
+      return null;
+    }
   }
 
   static Map<String, dynamic> _goalsToMap(Goals goals) {

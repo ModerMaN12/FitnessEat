@@ -20,6 +20,7 @@ class AddMealScreen extends StatefulWidget {
 class _AddMealScreenState extends State<AddMealScreen> {
   String _mealType = 'Завтрак';
   final List<String> _mealTypes = ['Завтрак', 'Обед', 'Ужин', 'Перекус'];
+  late DateTime _mealDate;
   String? _imagePath;
   final List<MealItemData> _selectedItems = [];
   double _totalCalories = 0;
@@ -30,6 +31,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
   @override
   void initState() {
     super.initState();
+    _mealDate = DateTime.now();
     if (widget.template != null) {
       _mealType = _mapTemplateTypeToMealType(widget.template!.type);
       for (var item in widget.template!.items) {
@@ -97,6 +99,8 @@ class _AddMealScreenState extends State<AddMealScreen> {
               children: [
                 _buildMealTypeSelector(),
                 const SizedBox(height: 16),
+                _buildDatePicker(),
+                const SizedBox(height: 16),
                 _buildImagePicker(),
                 const SizedBox(height: 16),
                 _buildFoodSelector(context, foodProvider),
@@ -124,6 +128,51 @@ class _AddMealScreenState extends State<AddMealScreen> {
         });
       },
     );
+  }
+
+  Widget _buildDatePicker() {
+    return InkWell(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: _mealDate,
+          firstDate: DateTime(2020),
+          lastDate: DateTime.now(),
+          locale: const Locale('ru', 'RU'),
+        );
+        if (picked != null) {
+          setState(() {
+            _mealDate = DateTime(picked.year, picked.month, picked.day,
+                _mealDate.hour, _mealDate.minute);
+          });
+        }
+      },
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              const Icon(Icons.calendar_today, color: Colors.blue),
+              const SizedBox(width: 12),
+              Text(
+                _formatDate(_mealDate),
+                style: const TextStyle(fontSize: 16),
+              ),
+              const Spacer(),
+              const Icon(Icons.edit, size: 18, color: Colors.grey),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final months = [
+      'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+      'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
   Widget _buildImagePicker() {
@@ -399,7 +448,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
 
     final meal = Meal(
       id: DateTime.now().toString(),
-      date: DateTime.now(),
+      date: _mealDate,
       type: _mealType,
       items: items,
       imagePath: _imagePath,
