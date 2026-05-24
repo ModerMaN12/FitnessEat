@@ -15,22 +15,26 @@ class StatisticsScreen extends StatefulWidget {
 
 class _StatisticsScreenState extends State<StatisticsScreen> {
   String _period = 'week';
-  DateTime _selectedDate = DateTime.now();
+  late DateTime _selectedDate;
 
-  List<Meal> get _filteredMeals {
-    final mealProvider = Provider.of<MealProvider>(context, listen: false);
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = DateTime.now();
+  }
+
+  List<Meal> _getFilteredMeals(MealProvider provider) {
     switch (_period) {
       case 'week':
-        return mealProvider.getMealsForWeek(_selectedDate);
+        return provider.getMealsForWeek(_selectedDate);
       case 'month':
-        return mealProvider.getMealsForMonth(_selectedDate);
+        return provider.getMealsForMonth(_selectedDate);
       default:
-        return mealProvider.getMealsForDate(_selectedDate);
+        return provider.getMealsForDate(_selectedDate);
     }
   }
 
-  Map<String, double> get _averages {
-    final meals = _filteredMeals;
+  Map<String, double> _getAverages(List<Meal> meals) {
     if (meals.isEmpty) {
       return {'calories': 0, 'proteins': 0, 'fats': 0, 'carbs': 0};
     }
@@ -68,8 +72,8 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       ),
       body: Consumer2<MealProvider, GoalsProvider>(
         builder: (context, mealProvider, goalsProvider, child) {
-          final meals = _filteredMeals;
-          final averages = _averages;
+          final meals = _getFilteredMeals(mealProvider);
+          final averages = _getAverages(meals);
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
@@ -104,6 +108,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       onSelectionChanged: (selection) {
         setState(() {
           _period = selection.first;
+          _selectedDate = DateTime.now();
         });
       },
     );
@@ -380,6 +385,26 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
     );
   }
 
+  List<DateTime> _getDaysInPeriod() {
+    if (_period == 'day') {
+      return [_selectedDate];
+    }
+
+    final days = <DateTime>[];
+    if (_period == 'week') {
+      final start = _selectedDate.subtract(Duration(days: _selectedDate.weekday - 1));
+      for (int i = 0; i < 7; i++) {
+        days.add(start.add(Duration(days: i)));
+      }
+    } else {
+      final daysInMonth = DateTime(_selectedDate.year, _selectedDate.month + 1, 0).day;
+      for (int i = 1; i <= daysInMonth; i++) {
+        days.add(DateTime(_selectedDate.year, _selectedDate.month, i));
+      }
+    }
+    return days;
+  }
+
   List<_DailyCalories> _getDailyCalories(List<Meal> meals) {
     final Map<String, double> dailyCalories = {};
 
@@ -388,7 +413,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       dailyCalories[day] = (dailyCalories[day] ?? 0) + meal.totalCalories;
     }
 
-    return dailyCalories.entries.map((e) => _DailyCalories(e.key, e.value)).toList();
+    final allDays = _getDaysInPeriod();
+    return allDays.map((d) {
+      final label = DateFormat('d MMM', 'ru_RU').format(d);
+      return _DailyCalories(label, dailyCalories[label] ?? 0);
+    }).toList();
   }
 
   List<_DailyNutrients> _getDailyNutrients(List<Meal> meals) {
@@ -408,7 +437,11 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
       );
     }
 
-    return dailyNutrients.values.toList();
+    final allDays = _getDaysInPeriod();
+    return allDays.map((d) {
+      final label = DateFormat('d MMM', 'ru_RU').format(d);
+      return dailyNutrients[label] ?? _DailyNutrients(label, 0, 0, 0, 0);
+    }).toList();
   }
 
   double _getMaxNutrients(List<Meal> meals) {

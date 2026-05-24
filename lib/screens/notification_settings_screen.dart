@@ -181,6 +181,32 @@ class _NotificationSettingsScreenState
     }
   }
 
+  Future<void> _disableAllNotifications() async {
+    final notificationService =
+        Provider.of<NotificationService>(context, listen: false);
+
+    await notificationService.cancelAll();
+
+    setState(() {
+      _waterReminderEnabled = false;
+      _breakfastReminderEnabled = false;
+      _lunchReminderEnabled = false;
+      _dinnerReminderEnabled = false;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('water_reminder_enabled', false);
+    await prefs.setBool('breakfast_reminder_enabled', false);
+    await prefs.setBool('lunch_reminder_enabled', false);
+    await prefs.setBool('dinner_reminder_enabled', false);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Все уведомления отключены')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -292,6 +318,17 @@ class _NotificationSettingsScreenState
             onToggle: (val) => setState(() => _dinnerReminderEnabled = val),
             onTimeChanged: (t) => setState(() => _dinnerTime = t),
           ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              icon: const Icon(Icons.notifications_off, color: Colors.red),
+              label: const Text('Выключить все уведомления',
+                  style: TextStyle(color: Colors.red)),
+              onPressed: _disableAllNotifications,
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
