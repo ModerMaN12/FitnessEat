@@ -1,13 +1,16 @@
 {
-    "name": "eat_fitness_1",
-    "short_name": "eat_fitness_1",
+    "name": "Eat Fitness - трекер питания",
+    "short_name": "Eat Fitness",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#E8F5E9",
+    "theme_color": "#4CAF50",
+    "description": "Трекер калорий и КБЖУ. Отслеживайте питание, воду и достигайте целей.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
+    "scope": "/",
+    "categories": ["health", "fitness", "food"],
+    "lang": "ru",
     "icons": [
         {
             "src": "icons/Icon-192.png",

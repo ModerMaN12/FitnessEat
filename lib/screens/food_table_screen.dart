@@ -1,9 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/food_provider.dart';
 import '../models/food_item.dart';
+import '../utils/platform_image.dart';
 
 class FoodTableScreen extends StatefulWidget {
   const FoodTableScreen({super.key});
@@ -75,7 +75,7 @@ class _FoodTableScreenState extends State<FoodTableScreen> {
                     return ListTile(
                       leading: food.imagePath != null
                           ? CircleAvatar(
-                              backgroundImage: FileImage(File(food.imagePath!)))
+                              backgroundImage: PlatformImage.provider(food.imagePath!))
                           : CircleAvatar(
                               child: Text(food.name.substring(0, 1))),
                       title: Text(food.name),
@@ -145,10 +145,10 @@ class _FoodTableScreenState extends State<FoodTableScreen> {
                       setState(() => imagePath = image.path);
                     }
                   },
-                  child: CircleAvatar(
+                    child: CircleAvatar(
                     radius: 40,
                     backgroundImage:
-                        imagePath != null ? FileImage(File(imagePath!)) : null,
+                        imagePath != null ? PlatformImage.provider(imagePath!) : null,
                     child: imagePath == null ? const Icon(Icons.add_a_photo) : null,
                   ),
                 ),
@@ -244,10 +244,10 @@ class _FoodTableScreenState extends State<FoodTableScreen> {
                       setState(() => imagePath = image.path);
                     }
                   },
-                  child: CircleAvatar(
+                    child: CircleAvatar(
                     radius: 40,
                     backgroundImage:
-                        imagePath != null ? FileImage(File(imagePath!)) : null,
+                        imagePath != null ? PlatformImage.provider(imagePath!) : null,
                     child: imagePath == null ? const Icon(Icons.add_a_photo) : null,
                   ),
                 ),

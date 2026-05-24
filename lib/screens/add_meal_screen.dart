@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +6,7 @@ import '../providers/meal_provider.dart';
 import '../models/food_item.dart';
 import '../models/meal.dart';
 import '../models/meal_template.dart';
+import '../utils/platform_image.dart';
 
 class AddMealScreen extends StatefulWidget {
   final MealTemplate? template;
@@ -194,7 +194,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
         child: _imagePath != null
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.file(File(_imagePath!), fit: BoxFit.cover),
+                child: PlatformImage.image(_imagePath!, fit: BoxFit.cover),
               )
             : const Column(
                 mainAxisAlignment: MainAxisAlignment.center,

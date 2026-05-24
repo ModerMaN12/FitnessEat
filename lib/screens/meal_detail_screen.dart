@@ -1,9 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/food_provider.dart';
 import '../models/meal.dart';
+import '../utils/platform_image.dart';
 
 class MealDetailScreen extends StatelessWidget {
   final Meal meal;
@@ -24,7 +24,7 @@ class MealDetailScreen extends StatelessWidget {
             if (meal.imagePath != null) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.file(File(meal.imagePath!)),
+                child: PlatformImage.image(meal.imagePath!),
               ),
               const SizedBox(height: 16),
             ],

@@ -1,15 +1,14 @@
 import 'dart:convert';
-import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:path_provider/path_provider.dart';
 import '../models/food_item.dart';
 import '../models/meal.dart';
 import '../models/goals.dart';
 import '../models/meal_template.dart';
+import 'platform_file_ops.dart';
+import 'platform_share.dart';
 
 class DataExport {
   static Future<String> exportToJson() async {
@@ -18,9 +17,16 @@ class DataExport {
     final goalsBox = Hive.box<Goals>('goals');
     final templateBox = Hive.box<MealTemplate>('templates');
 
+    final foods = await Future.wait<Map<String, dynamic>>(
+      foodBox.values.map((item) => _foodItemToMap(item)).toList(),
+    );
+    final meals = await Future.wait<Map<String, dynamic>>(
+      mealBox.values.map((meal) => _mealToMap(meal)).toList(),
+    );
+
     final data = {
-      'foods': foodBox.values.map((item) => _foodItemToMap(item)).toList(),
-      'meals': mealBox.values.map((meal) => _mealToMap(meal)).toList(),
+      'foods': foods,
+      'meals': meals,
       'goals': goalsBox.values.map((g) => _goalsToMap(g)).toList(),
       'templates': templateBox.values.map((t) => _templateToMap(t)).toList(),
       'exportDate': DateTime.now().toIso8601String(),
@@ -30,14 +36,7 @@ class DataExport {
   }
 
   static Future<String> saveJsonFile(String jsonString) async {
-    if (kIsWeb) {
-      return jsonString;
-    } else {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = io.File('${directory.path}/eat_fitness_backup_${DateTime.now().millisecondsSinceEpoch}.json');
-      await file.writeAsString(jsonString, encoding: utf8);
-      return file.path;
-    }
+    return await PlatformFileOps.saveJsonFile(jsonString);
   }
 
   static Future<Map<String, dynamic>?> importFromJson() async {
@@ -73,9 +72,8 @@ class DataExport {
       // 移动端如果bytes为空但path存在，尝试读取
       if (file.path != null && file.bytes == null) {
         try {
-          final io.File ioFile = io.File(file.path!);
-          if (await ioFile.exists()) {
-            final bytes = await ioFile.readAsBytes();
+          final bytes = await PlatformFileOps.readFileBytes(file.path!);
+          if (bytes != null) {
             final jsonString = utf8.decode(bytes);
             final data = jsonDecode(jsonString);
             if (data is Map<String, dynamic>) return data;
@@ -159,22 +157,11 @@ class DataExport {
   }
 
   static Future<String> saveCsvFile(String csvString) async {
-    if (kIsWeb) {
-      return csvString;
-    } else {
-      final directory = await getApplicationDocumentsDirectory();
-      final file = io.File('${directory.path}/eat_fitness_export_${DateTime.now().millisecondsSinceEpoch}.csv');
-      // 添加UTF-8 BOM让Excel正确识别编码，避免乱码
-      final bytes = [0xEF, 0xBB, 0xBF] + utf8.encode(csvString);
-      await file.writeAsBytes(bytes);
-      return file.path;
-    }
+    return await PlatformFileOps.saveCsvFile(csvString);
   }
 
   static Future<void> shareFile(String filePath) async {
-    if (!kIsWeb) {
-      await Share.shareXFiles([XFile(filePath)], subject: 'Eat Fitness Export');
-    }
+    await PlatformShare.shareFile(filePath, 'Eat Fitness Export');
   }
 
   static String _convertToCsv(List<List<dynamic>> rows) {
@@ -206,13 +193,13 @@ class DataExport {
     );
   }
 
-  static Map<String, dynamic> _foodItemToMap(FoodItem item) {
+  static Future<Map<String, dynamic>> _foodItemToMap(FoodItem item) async {
     String? imageData;
     if (item.imagePath != null) {
       try {
-        final file = io.File(item.imagePath!);
-        if (file.existsSync()) {
-          imageData = base64Encode(file.readAsBytesSync());
+        final bytes = await PlatformFileOps.readImageFile(item.imagePath!);
+        if (bytes != null) {
+          imageData = base64Encode(bytes);
         }
       } catch (_) {}
     }
@@ -259,28 +246,16 @@ class DataExport {
 
   static Future<String?> _saveImageFromBase64(
       String base64String, String id) async {
-    try {
-      final bytes = base64Decode(base64String);
-      final directory = await getApplicationDocumentsDirectory();
-      final imageDir = io.Directory('${directory.path}/images');
-      if (!await imageDir.exists()) {
-        await imageDir.create(recursive: true);
-      }
-      final file = io.File('${imageDir.path}/$id.jpg');
-      await file.writeAsBytes(bytes);
-      return file.path;
-    } catch (_) {
-      return null;
-    }
+    return await PlatformFileOps.saveImageFromBase64(base64String, id);
   }
 
-  static Map<String, dynamic> _mealToMap(Meal meal) {
+  static Future<Map<String, dynamic>> _mealToMap(Meal meal) async {
     String? imageData;
     if (meal.imagePath != null) {
       try {
-        final file = io.File(meal.imagePath!);
-        if (file.existsSync()) {
-          imageData = base64Encode(file.readAsBytesSync());
+        final bytes = await PlatformFileOps.readImageFile(meal.imagePath!);
+        if (bytes != null) {
+          imageData = base64Encode(bytes);
         }
       } catch (_) {}
     }
@@ -389,8 +364,8 @@ class DataExport {
 
   static Future<Map<String, dynamic>?> _readFileDesktop(String path) async {
     try {
-      final file = io.File(path);
-      final bytes = await file.readAsBytes();
+      final bytes = await PlatformFileOps.readFileBytes(path);
+      if (bytes == null) return null;
       final jsonString = utf8.decode(bytes);
       return jsonDecode(jsonString) as Map<String, dynamic>;
     } catch (e) {

@@ -1,9 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/meal_provider.dart';
 import 'meal_detail_screen.dart';
+import '../utils/platform_image.dart';
 
 class AllMealsScreen extends StatefulWidget {
   const AllMealsScreen({super.key});
@@ -74,7 +74,7 @@ class _AllMealsScreenState extends State<AllMealsScreen> {
                         leading: meal.imagePath != null
                             ? CircleAvatar(
                                 backgroundImage:
-                                    FileImage(File(meal.imagePath!)))
+                                    PlatformImage.provider(meal.imagePath!))
                             : CircleAvatar(
                                 child: Text(meal.type.substring(0, 1))),
                         title: Text(meal.type),
