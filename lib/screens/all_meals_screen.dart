@@ -82,10 +82,20 @@ class _AllMealsScreenState extends State<AllMealsScreen> {
                           '${DateFormat('dd.MM.yyyy HH:mm').format(meal.date)}\n'
                           '${meal.totalCalories.toInt()} ккал, Б: ${meal.totalProteins.toInt()}, Ж: ${meal.totalFats.toInt()}, У: ${meal.totalCarbs.toInt()}',
                         ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete),
-                          onPressed: () =>
-                              mealProvider.deleteMeal(meal.id),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              meal.isSynced ? Icons.cloud_done : Icons.cloud_outlined,
+                              size: 16,
+                              color: meal.isSynced ? Colors.green : Colors.grey,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete),
+                              onPressed: () =>
+                                  mealProvider.deleteMeal(meal.id),
+                            ),
+                          ],
                         ),
                         onTap: () {
                           Navigator.push(

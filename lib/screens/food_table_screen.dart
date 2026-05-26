@@ -82,20 +82,30 @@ class _FoodTableScreenState extends State<FoodTableScreen> {
                       subtitle: Text(
                         '${food.isPer100g ? "на 100г: " : "всего: "}${food.calories.toInt()} ккал, Б: ${food.proteins.toInt()}, Ж: ${food.fats.toInt()}, У: ${food.carbs.toInt()}',
                       ),
-                      trailing: PopupMenuButton(
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                              value: 'edit', child: Text('Редактировать')),
-                          const PopupMenuItem(
-                              value: 'delete', child: Text('Удалить')),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            food.isSynced ? Icons.cloud_done : Icons.cloud_outlined,
+                            size: 18,
+                            color: food.isSynced ? Colors.green : Colors.grey,
+                          ),
+                          PopupMenuButton(
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                  value: 'edit', child: Text('Редактировать')),
+                              const PopupMenuItem(
+                                  value: 'delete', child: Text('Удалить')),
+                            ],
+                            onSelected: (value) {
+                              if (value == 'delete') {
+                                foodProvider.deleteFood(food.id);
+                              } else if (value == 'edit') {
+                                _showFoodDialog(context, food: food);
+                              }
+                            },
+                          ),
                         ],
-                        onSelected: (value) {
-                          if (value == 'delete') {
-                            foodProvider.deleteFood(food.id);
-                          } else if (value == 'edit') {
-                            _showFoodDialog(context, food: food);
-                          }
-                        },
                       ),
                       onTap: () => _showFoodDialog(context, food: food),
                     );

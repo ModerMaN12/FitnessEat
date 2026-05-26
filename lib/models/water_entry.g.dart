@@ -2,10 +2,6 @@
 
 part of 'water_entry.dart';
 
-// **************************************************************************
-// TypeAdapterGenerator
-// **************************************************************************
-
 class WaterEntryAdapter extends TypeAdapter<WaterEntry> {
   @override
   final int typeId = 12;
@@ -19,17 +15,29 @@ class WaterEntryAdapter extends TypeAdapter<WaterEntry> {
     return WaterEntry(
       date: fields[0] as DateTime,
       amount: fields[1] as double,
+      userId: fields[2] as String? ?? '',
+      createdAt: fields[3] as DateTime? ?? DateTime.now(),
+      updatedAt: fields[4] as DateTime? ?? DateTime.now(),
+      isSynced: fields[5] as bool? ?? false,
     );
   }
 
   @override
   void write(BinaryWriter writer, WaterEntry obj) {
     writer
-      ..writeByte(2)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.date)
       ..writeByte(1)
-      ..write(obj.amount);
+      ..write(obj.amount)
+      ..writeByte(2)
+      ..write(obj.userId)
+      ..writeByte(3)
+      ..write(obj.createdAt)
+      ..writeByte(4)
+      ..write(obj.updatedAt)
+      ..writeByte(5)
+      ..write(obj.isSynced);
   }
 
   @override

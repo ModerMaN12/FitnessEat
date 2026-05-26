@@ -34,6 +34,18 @@ class FoodItem extends HiveObject {
   @HiveField(9)
   List<Ingredient>? ingredients; // for composite dishes
 
+  @HiveField(10)
+  String userId = '';
+
+  @HiveField(11)
+  DateTime createdAt = DateTime.now();
+
+  @HiveField(12)
+  DateTime updatedAt = DateTime.now();
+
+  @HiveField(13)
+  bool isSynced = false;
+
   FoodItem({
     required this.id,
     required this.name,
@@ -45,7 +57,12 @@ class FoodItem extends HiveObject {
     this.isPer100g = true,
     this.isComposite = false,
     this.ingredients,
-  });
+    this.userId = '',
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    this.isSynced = false,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
 
   double getCaloriesForAmount(double grams) {
     if (isPer100g) {

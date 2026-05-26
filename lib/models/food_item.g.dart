@@ -2,10 +2,6 @@
 
 part of 'food_item.dart';
 
-// **************************************************************************
-// TypeAdapterGenerator
-// **************************************************************************
-
 class FoodItemAdapter extends TypeAdapter<FoodItem> {
   @override
   final int typeId = 0;
@@ -27,13 +23,17 @@ class FoodItemAdapter extends TypeAdapter<FoodItem> {
       isPer100g: fields[7] as bool,
       isComposite: fields[8] as bool,
       ingredients: (fields[9] as List?)?.cast<Ingredient>(),
+      userId: fields[10] as String? ?? '',
+      createdAt: fields[11] as DateTime? ?? DateTime.now(),
+      updatedAt: fields[12] as DateTime? ?? DateTime.now(),
+      isSynced: fields[13] as bool? ?? false,
     );
   }
 
   @override
   void write(BinaryWriter writer, FoodItem obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -53,7 +53,15 @@ class FoodItemAdapter extends TypeAdapter<FoodItem> {
       ..writeByte(8)
       ..write(obj.isComposite)
       ..writeByte(9)
-      ..write(obj.ingredients);
+      ..write(obj.ingredients)
+      ..writeByte(10)
+      ..write(obj.userId)
+      ..writeByte(11)
+      ..write(obj.createdAt)
+      ..writeByte(12)
+      ..write(obj.updatedAt)
+      ..writeByte(13)
+      ..write(obj.isSynced);
   }
 
   @override
@@ -62,7 +70,8 @@ class FoodItemAdapter extends TypeAdapter<FoodItem> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is FoodItemAdapter &&
+      super == other &&
+          other is FoodItemAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

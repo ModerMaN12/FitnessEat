@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../providers/meal_provider.dart';
 import '../providers/goals_provider.dart';
 import '../providers/water_provider.dart';
+import '../providers/sync_provider.dart';
+import '../services/sync_service.dart';
 import '../models/meal.dart';
 import 'food_table_screen.dart';
 import 'add_meal_screen.dart';
@@ -27,6 +29,35 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   String _period = 'day';
   DateTime _selectedDate = DateTime.now();
+  SyncStatus? _lastSyncStatus;
+
+  @override
+  void initState() {
+    super.initState();
+    final sync = context.read<SyncProvider>();
+    sync.addListener(_onSyncChanged);
+  }
+
+  @override
+  void dispose() {
+    context.read<SyncProvider>().removeListener(_onSyncChanged);
+    super.dispose();
+  }
+
+  void _onSyncChanged() {
+    final sync = context.read<SyncProvider>();
+    if (sync.status == SyncStatus.success && _lastSyncStatus == SyncStatus.syncing) {
+      final msg = sync.pushedCount > 0 || sync.pulledCount > 0
+          ? 'Отправлено: ${sync.pushedCount}, получено: ${sync.pulledCount}'
+          : 'Всё актуально';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), duration: const Duration(seconds: 3)),
+        );
+      }
+    }
+    _lastSyncStatus = sync.status;
+  }
 
   List<Meal> get _filteredMeals {
     final mealProvider = Provider.of<MealProvider>(context, listen: false);
@@ -80,8 +111,39 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Eat Fitness'),
+        title: Row(
+          children: [
+            const Text('Eat Fitness'),
+            const SizedBox(width: 8),
+            Consumer<SyncProvider>(
+              builder: (context, sync, _) => Icon(
+                sync.isOnline ? Icons.cloud_done : Icons.cloud_off,
+                size: 16,
+                color: sync.isOnline ? Colors.green : Colors.red,
+              ),
+            ),
+          ],
+        ),
         actions: [
+          Consumer<SyncProvider>(
+            builder: (context, sync, _) {
+              if (sync.isSyncing) {
+                return const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                );
+              }
+              return IconButton(
+                icon: const Icon(Icons.sync),
+                tooltip: 'Синхронизировать',
+                onPressed: sync.isOnline ? () => sync.sync() : null,
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             tooltip: 'Добавить приём пищи',

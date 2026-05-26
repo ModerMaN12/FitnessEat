@@ -54,6 +54,18 @@ class Meal extends HiveObject {
   @HiveField(8)
   double totalCarbs;
 
+  @HiveField(9)
+  String userId = '';
+
+  @HiveField(10)
+  DateTime createdAt = DateTime.now();
+
+  @HiveField(11)
+  DateTime updatedAt = DateTime.now();
+
+  @HiveField(12)
+  bool isSynced = false;
+
   Meal({
     required this.id,
     required this.date,
@@ -64,5 +76,10 @@ class Meal extends HiveObject {
     this.totalProteins = 0,
     this.totalFats = 0,
     this.totalCarbs = 0,
-  });
+    this.userId = '',
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    this.isSynced = false,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
 }

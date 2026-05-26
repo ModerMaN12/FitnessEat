@@ -3,7 +3,7 @@ import 'package:hive/hive.dart';
 part 'meal_template.g.dart';
 
 @HiveType(typeId: 10)
-class MealTemplate {
+class MealTemplate extends HiveObject {
   @HiveField(0)
   String id;
 
@@ -16,12 +16,29 @@ class MealTemplate {
   @HiveField(3)
   List<TemplateItem> items;
 
+  @HiveField(4)
+  String userId = '';
+
+  @HiveField(5)
+  DateTime createdAt = DateTime.now();
+
+  @HiveField(6)
+  DateTime updatedAt = DateTime.now();
+
+  @HiveField(7)
+  bool isSynced = false;
+
   MealTemplate({
     required this.id,
     required this.name,
     required this.type,
     required this.items,
-  });
+    this.userId = '',
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    this.isSynced = false,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
 }
 
 @HiveType(typeId: 11)

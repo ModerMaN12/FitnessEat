@@ -2,10 +2,6 @@
 
 part of 'goals.dart';
 
-// **************************************************************************
-// TypeAdapterGenerator
-// **************************************************************************
-
 class GoalsAdapter extends TypeAdapter<Goals> {
   @override
   final int typeId = 4;
@@ -22,13 +18,17 @@ class GoalsAdapter extends TypeAdapter<Goals> {
       fats: fields[2] as double,
       carbs: fields[3] as double,
       water: fields[4] as double,
+      userId: fields[5] as String? ?? '',
+      createdAt: fields[6] as DateTime? ?? DateTime.now(),
+      updatedAt: fields[7] as DateTime? ?? DateTime.now(),
+      isSynced: fields[8] as bool? ?? false,
     );
   }
 
   @override
   void write(BinaryWriter writer, Goals obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.calories)
       ..writeByte(1)
@@ -38,7 +38,15 @@ class GoalsAdapter extends TypeAdapter<Goals> {
       ..writeByte(3)
       ..write(obj.carbs)
       ..writeByte(4)
-      ..write(obj.water);
+      ..write(obj.water)
+      ..writeByte(5)
+      ..write(obj.userId)
+      ..writeByte(6)
+      ..write(obj.createdAt)
+      ..writeByte(7)
+      ..write(obj.updatedAt)
+      ..writeByte(8)
+      ..write(obj.isSynced);
   }
 
   @override

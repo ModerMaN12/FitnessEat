@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
+import '../providers/auth_provider.dart';
 import '../providers/food_provider.dart';
 import '../providers/meal_provider.dart';
 import '../providers/goals_provider.dart';
 import '../providers/template_provider.dart';
+import '../providers/sync_provider.dart';
 import '../utils/data_export.dart';
 import 'notification_settings_screen.dart';
+import 'login_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   final Function(ThemeMode) setTheme;
@@ -23,6 +27,10 @@ class SettingsScreen extends StatelessWidget {
       ),
       body: ListView(
         children: [
+          _buildAccountSection(context),
+          const Divider(),
+          _buildSyncSection(context),
+          const Divider(),
           _buildThemeSection(context),
           const Divider(),
           _buildDataSection(context),
@@ -35,7 +43,119 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildAccountSection(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text('Аккаунт',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ),
+        ListTile(
+          leading: CircleAvatar(
+            child: Icon(Icons.person, color: Colors.white),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+          title: Text(auth.user?.email ?? 'Неизвестный'),
+          subtitle: const Text('Авторизован'),
+        ),
+        ListTile(
+          leading: const Icon(Icons.logout, color: Colors.red),
+          title: const Text('Выйти', style: TextStyle(color: Colors.red)),
+          onTap: () => _handleLogout(context),
+        ),
+      ],
+    );
+  }
+
+  void _handleLogout(BuildContext context) async {
+    await context.read<AuthProvider>().signOut();
+    if (context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
+  Widget _buildSyncSection(BuildContext context) {
+    final sync = context.watch<SyncProvider>();
+    final lastSync = sync.lastSyncAt;
+    final locale = const Locale('ru', 'RU');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text('Синхронизация',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        ),
+        ListTile(
+          leading: Icon(
+            sync.isOnline ? Icons.cloud_done : Icons.cloud_off,
+            color: sync.isOnline ? Colors.green : Colors.red,
+          ),
+          title: Text(sync.isOnline ? 'Подключено к серверу' : 'Нет подключения'),
+          subtitle: lastSync != null
+              ? Text(
+                  'Последняя синхронизация: ${DateFormat('dd.MM.yyyy HH:mm', locale.languageCode).format(lastSync)}')
+              : const Text('Синхронизация не выполнялась'),
+        ),
+        if (sync.isSyncing)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              sync.currentStage,
+              style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 13),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: sync.isSyncing || !sync.isOnline
+                  ? null
+                  : () => sync.sync(),
+              icon: sync.isSyncing
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.sync),
+              label: Text(sync.isSyncing
+                  ? 'Синхронизация...'
+                  : 'Синхронизировать'),
+            ),
+          ),
+        ),
+        if (!sync.isSyncing && sync.pushedCount + sync.pulledCount > 0)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Отправлено: ${sync.pushedCount}, получено: ${sync.pulledCount}',
+              style: const TextStyle(fontSize: 13, color: Colors.green),
+            ),
+          ),
+        if (sync.error != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              sync.error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildThemeSection(BuildContext context) {
+    final themeMode = this.themeMode;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -107,23 +227,28 @@ class SettingsScreen extends StatelessWidget {
     try {
       final jsonString = await DataExport.exportToJson();
       if (kIsWeb) {
-        DataExport.showDataDialog(context, jsonString, 'Экспорт JSON (скопируйте)');
+        DataExport.showDataDialog(
+            context, jsonString, 'Экспорт JSON (скопируйте)');
       } else {
         final path = await DataExport.saveJsonFile(jsonString);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Сохранено: $path'),
-            action: SnackBarAction(
-              label: 'Поделиться',
-              onPressed: () => DataExport.shareFile(path),
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Сохранено: $path'),
+              action: SnackBarAction(
+                label: 'Поделиться',
+                onPressed: () => DataExport.shareFile(path),
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e')),
+        );
+      }
     }
   }
 
@@ -131,23 +256,28 @@ class SettingsScreen extends StatelessWidget {
     try {
       final csvString = await DataExport.exportToCsv();
       if (kIsWeb) {
-        DataExport.showDataDialog(context, csvString, 'Экспорт CSV (скопируйте)');
+        DataExport.showDataDialog(
+            context, csvString, 'Экспорт CSV (скопируйте)');
       } else {
         final path = await DataExport.saveCsvFile(csvString);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Сохранено: $path'),
-            action: SnackBarAction(
-              label: 'Поделиться',
-              onPressed: () => DataExport.shareFile(path),
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Сохранено: $path'),
+              action: SnackBarAction(
+                label: 'Поделиться',
+                onPressed: () => DataExport.shareFile(path),
+              ),
             ),
-          ),
-        );
+          );
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка: $e')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка: $e')),
+        );
+      }
     }
   }
 
@@ -157,29 +287,39 @@ class SettingsScreen extends StatelessWidget {
       if (data != null) {
         await DataExport.applyImportedData(data);
 
-        // Перезагружаем провайдеры чтобы обновить UI
         final foodProvider = Provider.of<FoodProvider>(context, listen: false);
         final mealProvider = Provider.of<MealProvider>(context, listen: false);
-        final goalsProvider = Provider.of<GoalsProvider>(context, listen: false);
-        final templateProvider = Provider.of<TemplateProvider>(context, listen: false);
+        final goalsProvider =
+            Provider.of<GoalsProvider>(context, listen: false);
+        final templateProvider =
+            Provider.of<TemplateProvider>(context, listen: false);
 
         foodProvider.reload();
         mealProvider.reload();
         goalsProvider.reload();
         templateProvider.reload();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Данные успешно импортированы и обновлены')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Данные успешно импортированы и обновлены')),
+          );
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Импорт отменен или файл не содержит данных')),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Импорт отменен или файл не содержит данных')),
+          );
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ошибка импорта: $e')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка импорта: $e')),
+        );
+      }
     }
   }
 
@@ -257,7 +397,8 @@ class SettingsScreen extends StatelessWidget {
                 const SnackBar(content: Text('Данные очищены')),
               );
             },
-            child: const Text('Очистить', style: TextStyle(color: Colors.white)),
+            child:
+                const Text('Очистить', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
