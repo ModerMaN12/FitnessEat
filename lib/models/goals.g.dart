@@ -2,6 +2,10 @@
 
 part of 'goals.dart';
 
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
+
 class GoalsAdapter extends TypeAdapter<Goals> {
   @override
   final int typeId = 4;
@@ -18,10 +22,10 @@ class GoalsAdapter extends TypeAdapter<Goals> {
       fats: fields[2] as double,
       carbs: fields[3] as double,
       water: fields[4] as double,
-      userId: fields[5] as String? ?? '',
-      createdAt: fields[6] as DateTime? ?? DateTime.now(),
-      updatedAt: fields[7] as DateTime? ?? DateTime.now(),
-      isSynced: fields[8] as bool? ?? false,
+      userId: fields[5] as String,
+      createdAt: fields[6] as DateTime?,
+      updatedAt: fields[7] as DateTime?,
+      isSynced: fields[8] as bool,
     );
   }
 

@@ -9,12 +9,14 @@ import '../models/meal.dart';
 import '../models/goals.dart';
 import '../models/meal_template.dart';
 import '../models/water_entry.dart';
+import 'deletion_tracker.dart';
 
 enum SyncStatus { idle, syncing, success, error }
 
 class SyncService extends ChangeNotifier {
   final SupabaseClient _supabase;
   final Connectivity _connectivity;
+  final DeletionTracker _deletionTracker;
 
   SyncStatus _status = SyncStatus.idle;
   String? _error;
@@ -26,7 +28,8 @@ class SyncService extends ChangeNotifier {
   int _pushedCount = 0;
   int _pulledCount = 0;
 
-  SyncService(this._supabase, this._connectivity) {
+  SyncService(this._supabase, this._connectivity, {DeletionTracker? deletionTracker})
+      : _deletionTracker = deletionTracker ?? DeletionTracker() {
     _init();
   }
 
@@ -128,6 +131,9 @@ class SyncService extends ChangeNotifier {
 
     String? stageError;
 
+    stageError = await _runStage('Синхронизация удалений...', _flushDeletes);
+    if (stageError != null) { _setError(stageError); return; }
+
     stageError = await _runStage('Отправка продуктов...', _pushFoods);
     if (stageError != null) { _setError(stageError); return; }
 
@@ -183,6 +189,27 @@ class SyncService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _flushDeletes() async {
+    final userId = _supabase.auth.currentUser!.id;
+    const tables = ['foods', 'meals', 'templates', 'water_entries'];
+
+    for (final table in tables) {
+      final ids = _deletionTracker.idsByTable(table);
+      if (ids.isEmpty) continue;
+
+      await _supabase
+          .from(table)
+          .delete()
+          .eq('user_id', userId)
+          .inFilter('id', ids)
+          .timeout(const Duration(seconds: 10));
+
+      for (final id in ids) {
+        await _deletionTracker.untrack(id);
+      }
+    }
+  }
+
   Future<void> _pushFoods() async {
     final box = Hive.box<FoodItem>('foods');
     final unsynced = box.values.where((f) => !f.isSynced).toList();
@@ -213,23 +240,31 @@ class SyncService extends ChangeNotifier {
         .upsert(foodsPayload)
         .timeout(const Duration(seconds: 15));
 
-    for (final food in unsynced) {
-      if (food.ingredients != null && food.ingredients!.isNotEmpty) {
-        await _supabase.from('food_ingredients')
-            .delete()
-            .eq('food_id', food.id)
-            .timeout(const Duration(seconds: 5));
+    final foodIds = unsynced.map((f) => f.id).toList();
+    await _supabase.from('food_ingredients')
+        .delete()
+        .inFilter('food_id', foodIds)
+        .timeout(const Duration(seconds: 10));
 
+    final allIngredients = <Map<String, dynamic>>[];
+    for (final food in unsynced) {
+      if (food.ingredients != null) {
         for (final ing in food.ingredients!) {
-          await _supabase.from('food_ingredients')
-              .insert({
-                'food_id': food.id,
-                'ingredient_food_id': ing.foodItemId,
-                'grams': ing.grams,
-              })
-              .timeout(const Duration(seconds: 5));
+          allIngredients.add({
+            'food_id': food.id,
+            'ingredient_food_id': ing.foodItemId,
+            'grams': ing.grams,
+          });
         }
       }
+    }
+    if (allIngredients.isNotEmpty) {
+      await _supabase.from('food_ingredients')
+          .insert(allIngredients)
+          .timeout(const Duration(seconds: 10));
+    }
+
+    for (final food in unsynced) {
       food.isSynced = true;
       await food.save();
     }
@@ -265,23 +300,30 @@ class SyncService extends ChangeNotifier {
         .upsert(mealsPayload)
         .timeout(const Duration(seconds: 15));
 
+    final mealIds = unsynced.map((m) => m.id).toList();
+    await _supabase.from('meal_items')
+        .delete()
+        .inFilter('meal_id', mealIds)
+        .timeout(const Duration(seconds: 10));
+
+    final allItems = <Map<String, dynamic>>[];
     for (final meal in unsynced) {
-      await _supabase.from('meal_items')
-          .delete()
-          .eq('meal_id', meal.id)
-          .timeout(const Duration(seconds: 5));
-
-      if (meal.items.isNotEmpty) {
-        await _supabase.from('meal_items')
-            .insert(meal.items.map((item) => {
-              'meal_id': meal.id,
-              'food_item_id': item.foodItemId,
-              'grams': item.grams,
-              'food_name': item.foodName,
-            }).toList())
-            .timeout(const Duration(seconds: 10));
+      for (final item in meal.items) {
+        allItems.add({
+          'meal_id': meal.id,
+          'food_item_id': item.foodItemId,
+          'grams': item.grams,
+          'food_name': item.foodName,
+        });
       }
+    }
+    if (allItems.isNotEmpty) {
+      await _supabase.from('meal_items')
+          .insert(allItems)
+          .timeout(const Duration(seconds: 10));
+    }
 
+    for (final meal in unsynced) {
       meal.isSynced = true;
       await meal.save();
     }
@@ -337,23 +379,30 @@ class SyncService extends ChangeNotifier {
         .upsert(templatesPayload)
         .timeout(const Duration(seconds: 15));
 
+    final templateIds = unsynced.map((t) => t.id).toList();
+    await _supabase.from('template_items')
+        .delete()
+        .inFilter('template_id', templateIds)
+        .timeout(const Duration(seconds: 10));
+
+    final allItems = <Map<String, dynamic>>[];
     for (final template in unsynced) {
-      await _supabase.from('template_items')
-          .delete()
-          .eq('template_id', template.id)
-          .timeout(const Duration(seconds: 5));
-
-      if (template.items.isNotEmpty) {
-        await _supabase.from('template_items')
-            .insert(template.items.map((item) => {
-              'template_id': template.id,
-              'food_item_id': item.foodItemId,
-              'grams': item.grams,
-              'food_name': item.foodName,
-            }).toList())
-            .timeout(const Duration(seconds: 10));
+      for (final item in template.items) {
+        allItems.add({
+          'template_id': template.id,
+          'food_item_id': item.foodItemId,
+          'grams': item.grams,
+          'food_name': item.foodName,
+        });
       }
+    }
+    if (allItems.isNotEmpty) {
+      await _supabase.from('template_items')
+          .insert(allItems)
+          .timeout(const Duration(seconds: 10));
+    }
 
+    for (final template in unsynced) {
       template.isSynced = true;
       await template.save();
     }
@@ -374,7 +423,8 @@ class SyncService extends ChangeNotifier {
     }
 
     await _supabase.from('water_entries')
-        .insert(unsynced.map((e) => {
+        .upsert(unsynced.map((e) => {
+          'id': e.id,
           'user_id': userId,
           'date': '${e.date.year}-${e.date.month.toString().padLeft(2, '0')}-${e.date.day.toString().padLeft(2, '0')}',
           'amount': e.amount,
@@ -402,8 +452,10 @@ class SyncService extends ChangeNotifier {
 
     final box = Hive.box<FoodItem>('foods');
     for (final row in response) {
+      final id = row['id'] as String;
+      if (_deletionTracker.isPending(id)) continue;
       final serverUpdated = DateTime.parse(row['updated_at'] as String);
-      final local = box.get(row['id'] as String);
+      final local = box.get(id);
       if (local == null || local.updatedAt.isBefore(serverUpdated)) {
         List<Ingredient>? ingredients;
         try {
@@ -420,8 +472,8 @@ class SyncService extends ChangeNotifier {
           }
         } catch (_) {}
 
-        await box.put(row['id'] as String, FoodItem(
-          id: row['id'] as String,
+await box.put(row['id'] as String, FoodItem(
+                  id: id,
           name: row['name'] as String,
           imagePath: row['image_url'] as String?,
           calories: (row['calories'] as num).toDouble(),
@@ -456,8 +508,10 @@ class SyncService extends ChangeNotifier {
     final foodBox = Hive.box<FoodItem>('foods');
 
     for (final row in response) {
+      final id = row['id'] as String;
+      if (_deletionTracker.isPending(id)) continue;
       final serverUpdated = DateTime.parse(row['updated_at'] as String);
-      final local = box.get(row['id'] as String);
+      final local = box.get(id);
       if (local == null || local.updatedAt.isBefore(serverUpdated)) {
         List<MealItem> items = [];
         try {
@@ -484,8 +538,8 @@ class SyncService extends ChangeNotifier {
           }).toList();
         } catch (_) {}
 
-        await box.put(row['id'] as String, Meal(
-          id: row['id'] as String,
+        await box.put(id, Meal(
+          id: id,
           date: DateTime.parse(row['date'] as String),
           type: row['type'] as String,
           items: items,
@@ -549,8 +603,10 @@ class SyncService extends ChangeNotifier {
 
     final box = Hive.box<MealTemplate>('templates');
     for (final row in response) {
+      final id = row['id'] as String;
+      if (_deletionTracker.isPending(id)) continue;
       final serverUpdated = DateTime.parse(row['updated_at'] as String);
-      final local = box.get(row['id'] as String);
+      final local = box.get(id);
       if (local == null || local.updatedAt.isBefore(serverUpdated)) {
         List<TemplateItem> items = [];
         try {
@@ -567,8 +623,8 @@ class SyncService extends ChangeNotifier {
           )).toList();
         } catch (_) {}
 
-        await box.put(row['id'] as String, MealTemplate(
-          id: row['id'] as String,
+        await box.put(id, MealTemplate(
+          id: id,
           name: row['name'] as String,
           type: row['type'] as String,
           items: items,
@@ -596,17 +652,14 @@ class SyncService extends ChangeNotifier {
     final box = Hive.box<WaterEntry>('water');
     for (final row in response) {
       final serverUpdated = DateTime.parse(row['updated_at'] as String);
-      final date = DateTime.parse(row['date'] as String);
-      final exists = box.values.any((e) =>
-          e.date.year == date.year &&
-          e.date.month == date.month &&
-          e.date.day == date.day &&
-          (e.amount - (row['amount'] as num).toDouble()).abs() < 0.01);
-
-      if (!exists) {
-        await box.add(WaterEntry(
-          date: date,
+      final id = row['id'] as String;
+      if (_deletionTracker.isPending(id)) continue;
+      final local = box.get(id);
+      if (local == null || local.updatedAt.isBefore(serverUpdated)) {
+        await box.put(id, WaterEntry(
+          date: DateTime.parse(row['date'] as String),
           amount: (row['amount'] as num).toDouble(),
+          id: id,
           userId: row['user_id'] as String,
           createdAt: DateTime.parse(row['created_at'] as String),
           updatedAt: serverUpdated,

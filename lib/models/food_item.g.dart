@@ -2,6 +2,10 @@
 
 part of 'food_item.dart';
 
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
+
 class FoodItemAdapter extends TypeAdapter<FoodItem> {
   @override
   final int typeId = 0;
@@ -23,10 +27,10 @@ class FoodItemAdapter extends TypeAdapter<FoodItem> {
       isPer100g: fields[7] as bool,
       isComposite: fields[8] as bool,
       ingredients: (fields[9] as List?)?.cast<Ingredient>(),
-      userId: fields[10] as String? ?? '',
-      createdAt: fields[11] as DateTime? ?? DateTime.now(),
-      updatedAt: fields[12] as DateTime? ?? DateTime.now(),
-      isSynced: fields[13] as bool? ?? false,
+      userId: fields[10] as String,
+      createdAt: fields[11] as DateTime?,
+      updatedAt: fields[12] as DateTime?,
+      isSynced: fields[13] as bool,
     );
   }
 
@@ -70,8 +74,7 @@ class FoodItemAdapter extends TypeAdapter<FoodItem> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      super == other &&
-          other is FoodItemAdapter &&
+      other is FoodItemAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/meal_template.dart';
+import '../services/deletion_tracker.dart';
 
 class TemplateProvider extends ChangeNotifier {
   late Box<MealTemplate> _templateBox;
+  final DeletionTracker _deletionTracker;
   List<MealTemplate> _templates = [];
+
+  TemplateProvider({DeletionTracker? deletionTracker})
+      : _deletionTracker = deletionTracker ?? DeletionTracker();
 
   List<MealTemplate> get templates => _templates;
 
@@ -34,6 +39,7 @@ class TemplateProvider extends ChangeNotifier {
 
   Future<void> deleteTemplate(String id) async {
     await _templateBox.delete(id);
+    await _deletionTracker.track(id, 'templates');
     _loadTemplates();
   }
 

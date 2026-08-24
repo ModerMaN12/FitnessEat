@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/meal.dart';
+import '../services/deletion_tracker.dart';
 
 class MealProvider extends ChangeNotifier {
   late Box<Meal> _mealBox;
+  final DeletionTracker _deletionTracker;
   List<Meal> _meals = [];
+
+  MealProvider({DeletionTracker? deletionTracker})
+      : _deletionTracker = deletionTracker ?? DeletionTracker();
 
   List<Meal> get meals => _meals;
 
@@ -30,6 +35,7 @@ class MealProvider extends ChangeNotifier {
 
   Future<void> deleteMeal(String id) async {
     await _mealBox.delete(id);
+    await _deletionTracker.track(id, 'meals');
     _loadMeals();
   }
 

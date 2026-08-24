@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
 import '../providers/food_provider.dart';
 import '../providers/meal_provider.dart';
 import '../models/food_item.dart';
 import '../models/meal.dart';
 import '../models/meal_template.dart';
+import '../services/image_service.dart';
 import '../utils/platform_image.dart';
 
 class AddMealScreen extends StatefulWidget {
@@ -176,12 +176,20 @@ class _AddMealScreenState extends State<AddMealScreen> {
   }
 
   Widget _buildImagePicker() {
+    final imageService =
+        Provider.of<ImageService>(context, listen: false);
     return GestureDetector(
       onTap: () async {
-        final picker = ImagePicker();
-        final image = await picker.pickImage(source: ImageSource.gallery);
-        if (image != null) {
-          setState(() => _imagePath = image.path);
+        try {
+          final url = await imageService.pickAndUploadImage();
+          if (url != null) {
+            setState(() => _imagePath = url);
+          }
+        } catch (e) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Не удалось загрузить фото: $e')),
+          );
         }
       },
       child: Container(

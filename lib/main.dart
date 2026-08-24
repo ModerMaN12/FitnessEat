@@ -22,6 +22,8 @@ import 'providers/template_provider.dart';
 import 'providers/water_provider.dart';
 import 'providers/sync_provider.dart';
 import 'services/auth_service.dart';
+import 'services/deletion_tracker.dart';
+import 'services/image_service.dart';
 import 'services/notification_service.dart';
 import 'services/sync_service.dart';
 import 'screens/home_screen.dart';
@@ -54,13 +56,17 @@ Future<void> main() async {
   final supabase = Supabase.instance.client;
   final authService = AuthService(supabase);
   final connectivity = Connectivity();
-  final syncService = SyncService(supabase, connectivity);
-  final foodProvider = FoodProvider();
-  final mealProvider = MealProvider();
+  final deletionTracker = DeletionTracker();
+  await deletionTracker.init();
+  final syncService = SyncService(supabase, connectivity,
+      deletionTracker: deletionTracker);
+  final foodProvider = FoodProvider(deletionTracker: deletionTracker);
+  final mealProvider = MealProvider(deletionTracker: deletionTracker);
   final goalsProvider = GoalsProvider();
-  final templateProvider = TemplateProvider();
-  final waterProvider = WaterProvider();
+  final templateProvider = TemplateProvider(deletionTracker: deletionTracker);
+  final waterProvider = WaterProvider(deletionTracker: deletionTracker);
   final notificationService = NotificationService();
+  final imageService = ImageService(supabase);
 
   await foodProvider.init();
   await mealProvider.init();
@@ -84,6 +90,7 @@ Future<void> main() async {
         Provider.value(value: syncService),
         ChangeNotifierProvider(create: (_) => SyncProvider(syncService)),
         Provider.value(value: notificationService),
+        Provider<ImageService>.value(value: imageService),
       ],
       child: const MyApp(),
     ),

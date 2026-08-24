@@ -2,6 +2,10 @@
 
 part of 'meal_template.dart';
 
+// **************************************************************************
+// TypeAdapterGenerator
+// **************************************************************************
+
 class MealTemplateAdapter extends TypeAdapter<MealTemplate> {
   @override
   final int typeId = 10;
@@ -17,10 +21,10 @@ class MealTemplateAdapter extends TypeAdapter<MealTemplate> {
       name: fields[1] as String,
       type: fields[2] as String,
       items: (fields[3] as List).cast<TemplateItem>(),
-      userId: fields[4] as String? ?? '',
-      createdAt: fields[5] as DateTime? ?? DateTime.now(),
-      updatedAt: fields[6] as DateTime? ?? DateTime.now(),
-      isSynced: fields[7] as bool? ?? false,
+      userId: fields[4] as String,
+      createdAt: fields[5] as DateTime?,
+      updatedAt: fields[6] as DateTime?,
+      isSynced: fields[7] as bool,
     );
   }
 

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
 import '../providers/food_provider.dart';
 import '../models/food_item.dart';
+import '../services/image_service.dart';
 import '../utils/platform_image.dart';
 
 class FoodTableScreen extends StatefulWidget {
@@ -125,6 +125,8 @@ class _FoodTableScreenState extends State<FoodTableScreen> {
   }
 
   void _showFoodDialog(BuildContext context, {FoodItem? food}) {
+    final imageService =
+        Provider.of<ImageService>(context, listen: false);
     final nameController = TextEditingController(text: food?.name ?? '');
     final calController =
         TextEditingController(text: food?.calories.toString() ?? '');
@@ -148,11 +150,17 @@ class _FoodTableScreenState extends State<FoodTableScreen> {
               children: [
                 GestureDetector(
                   onTap: () async {
-                    final picker = ImagePicker();
-                    final image =
-                        await picker.pickImage(source: ImageSource.gallery);
-                    if (image != null) {
-                      setState(() => imagePath = image.path);
+                    try {
+                      final url = await imageService.pickAndUploadImage();
+                      if (url != null) {
+                        setState(() => imagePath = url);
+                      }
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text('Не удалось загрузить фото: $e')),
+                      );
                     }
                   },
                     child: CircleAvatar(
@@ -232,6 +240,8 @@ class _FoodTableScreenState extends State<FoodTableScreen> {
   }
 
   void _showCompositeDishDialog(BuildContext context) {
+    final imageService =
+        Provider.of<ImageService>(context, listen: false);
     final nameController = TextEditingController();
     String? imagePath;
     final ingredients = <Map<String, dynamic>>[];
@@ -247,11 +257,17 @@ class _FoodTableScreenState extends State<FoodTableScreen> {
               children: [
                 GestureDetector(
                   onTap: () async {
-                    final picker = ImagePicker();
-                    final image =
-                        await picker.pickImage(source: ImageSource.gallery);
-                    if (image != null) {
-                      setState(() => imagePath = image.path);
+                    try {
+                      final url = await imageService.pickAndUploadImage();
+                      if (url != null) {
+                        setState(() => imagePath = url);
+                      }
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text('Не удалось загрузить фото: $e')),
+                      );
                     }
                   },
                     child: CircleAvatar(
